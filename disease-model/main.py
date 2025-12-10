@@ -27,6 +27,7 @@ class DiseaseModelConfig(BaseConfig):
     lags_past_covariates: int = 12
     output_chunk_length: int = 1
     n_samples: int = 100
+    min_dispersion: float = 1.0  # Minimum overdispersion factor
 
 
 def _convert_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -132,16 +133,49 @@ async def on_train(
             )
 
             model.fit(target_series, past_covariates=covariate_series)
+
+            # Compute in-sample residuals to estimate overdispersion
+            try:
+                fitted_values = model.historical_forecasts(
+                    target_series,
+                    past_covariates=covariate_series,
+                    start=config.lags,
+                    forecast_horizon=1,
+                    stride=1,
+                    retrain=False,
+                    verbose=False,
+                )
+                fitted_vals = fitted_values.values().flatten()
+                actual_vals = target_series.values().flatten()[config.lags : config.lags + len(fitted_vals)]
+
+                # Estimate dispersion: Var(Y) = mu + mu^2/r => r = mu^2 / (Var(Y) - mu)
+                residuals = actual_vals - fitted_vals
+                mean_fitted = np.mean(fitted_vals[fitted_vals > 0])
+                var_residuals = np.var(residuals)
+
+                if var_residuals > mean_fitted and mean_fitted > 0:
+                    dispersion = (mean_fitted ** 2) / (var_residuals - mean_fitted)
+                    dispersion = max(config.min_dispersion, min(dispersion, 100.0))  # Clamp
+                else:
+                    dispersion = config.min_dispersion
+
+                log.info("dispersion_estimated", location=location, dispersion=dispersion)
+            except Exception as e:
+                log.warning("dispersion_estimation_failed", location=location, error=str(e))
+                dispersion = config.min_dispersion
+
             models[location] = {
                 "model": model,
                 "last_target": target_series,
                 "last_covariates": covariate_series,
+                "dispersion": dispersion,
             }
             training_stats[location] = {
                 "status": "trained",
                 "n_samples": len(target_series),
+                "dispersion": dispersion,
             }
-            log.info("model_trained", location=location, n_samples=len(target_series))
+            log.info("model_trained", location=location, n_samples=len(target_series), dispersion=dispersion)
 
         except Exception as e:
             log.error("training_failed", location=location, error=str(e))
@@ -225,13 +259,20 @@ async def on_predict(
 
                 # Generate samples using prediction uncertainty
                 pred_values = predictions.values().flatten()
+                dispersion = models[location].get("dispersion", config.min_dispersion)
 
-                # Create probabilistic samples using Poisson-like distribution
+                # Create probabilistic samples using negative binomial for overdispersion
+                # Negative binomial: Var = mu + mu^2/r where r is dispersion
                 samples = []
                 for pred_val in pred_values:
                     mean_pred = max(0.1, float(pred_val))
-                    # Use negative binomial for overdispersion
-                    sample_vals = np.random.poisson(mean_pred, config.n_samples).tolist()
+                    # Convert to numpy negative binomial parameters: n (successes), p (probability)
+                    # For NB: mean = n*(1-p)/p, var = n*(1-p)/p^2
+                    # With our parameterization: var = mu + mu^2/r
+                    # So: n = r, p = r/(r+mu)
+                    r = dispersion
+                    p = r / (r + mean_pred)
+                    sample_vals = np.random.negative_binomial(r, p, config.n_samples).tolist()
                     samples.append(sample_vals)
 
             except Exception as e:
@@ -260,7 +301,7 @@ async def on_predict(
 # Service metadata
 info = MLServiceInfo(
     display_name="Darts Disease Model",
-    version="1.0.0",
+    version="1.1.0",
     summary="Spatio-temporal disease prediction using darts time series library",
     description="Uses LinearRegressionModel with climate covariates (rainfall, temperature) for disease case forecasting.",
     author="CHAP Team",
