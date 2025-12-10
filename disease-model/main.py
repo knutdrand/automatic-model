@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 import structlog
 from darts import TimeSeries
-from darts.models import LinearRegressionModel
+from darts.models import RegressionModel
+from sklearn.ensemble import RandomForestRegressor
 from geojson_pydantic import FeatureCollection
 
 from chapkit import BaseConfig
@@ -162,10 +163,11 @@ async def on_train(
             continue
 
         try:
-            model = LinearRegressionModel(
+            model = RegressionModel(
                 lags=config.lags,
                 lags_past_covariates=config.lags_past_covariates if covariate_series else None,
                 output_chunk_length=config.output_chunk_length,
+                model=RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42),
             )
 
             model.fit(target_series, past_covariates=covariate_series)
@@ -338,9 +340,9 @@ async def on_predict(
 # Service metadata
 info = MLServiceInfo(
     display_name="Darts Disease Model",
-    version="1.3.0",
+    version="1.4.0",
     summary="Spatio-temporal disease prediction using darts time series library",
-    description="Uses LinearRegressionModel with climate covariates (rainfall, temperature) and Fourier seasonal features for disease case forecasting.",
+    description="Uses RandomForestRegressor with climate covariates (rainfall, temperature) and Fourier seasonal features for disease case forecasting.",
     author="CHAP Team",
     author_assessed_status=AssessedStatus.yellow,
     contact_email="chap@example.com",

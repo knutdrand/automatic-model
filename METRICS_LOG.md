@@ -75,3 +75,21 @@ This file tracks model iterations and their evaluation metrics.
   - Model's point predictions are biased low (ND = 76%)
   - Need better point predictions, not just wider intervals
 - **Next**: Try different darts models or feature engineering
+
+### v1.4.0 - RandomForest Model (2024-12-10)
+- **Model**: darts RegressionModel with RandomForestRegressor
+- **Features**: rainfall, mean_temperature + Fourier seasonal (4 harmonics)
+- **Uncertainty**: Negative binomial with dispersion_scale=0.1
+- **Changes**:
+  - Switched from LinearRegressionModel to RegressionModel with RandomForest
+  - RandomForest: n_estimators=100, max_depth=10
+- **Results** (MAJOR IMPROVEMENT):
+  - RMSE: 4.87 (was 6.99-7.1 in v1.2-1.3 → ~30% improvement!)
+  - Coverage[0.9]: 96.8% (was 50.6% → now EXCEEDS 90% target!)
+  - ND: 0.63 (was 0.76 → better point predictions)
+  - MASE: improved
+- **Analysis**:
+  - RandomForest captures non-linear relationships in the data
+  - Better point predictions naturally lead to better coverage
+  - Coverage slightly above target (96.8% vs 90%) - could tune dispersion_scale up slightly
+- **Next**: Fine-tune hyperparameters, try other ensemble methods
