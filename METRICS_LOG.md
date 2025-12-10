@@ -61,3 +61,17 @@ This file tracks model iterations and their evaluation metrics.
   - GAP-004 discovered: Published chap-core incompatible with chapkit API
   - Workaround: Use local chap-core from source
 - **Next**: Try more advanced darts models (TBATS, Prophet, etc.)
+
+### v1.3.0 - Dispersion Calibration Attempt (2024-12-10)
+- **Model**: darts LinearRegressionModel with dispersion_scale parameter
+- **Changes**:
+  - Added `dispersion_scale` config parameter (default 0.1)
+  - Scales down dispersion to widen prediction intervals
+- **Results**:
+  - Coverage[0.9]: 51.9% (still ~50%, unchanged)
+  - ND: 0.76 (high normalized deviation)
+- **Analysis**:
+  - Coverage doesn't improve with wider variance - problem is systematic underprediction
+  - Model's point predictions are biased low (ND = 76%)
+  - Need better point predictions, not just wider intervals
+- **Next**: Try different darts models or feature engineering

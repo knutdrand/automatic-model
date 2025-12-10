@@ -28,6 +28,7 @@ class DiseaseModelConfig(BaseConfig):
     output_chunk_length: int = 1
     n_samples: int = 100
     min_dispersion: float = 1.0  # Minimum overdispersion factor
+    dispersion_scale: float = 0.1  # Scale factor for dispersion (lower = wider intervals)
 
 
 def _convert_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -305,7 +306,8 @@ async def on_predict(
                     # For NB: mean = n*(1-p)/p, var = n*(1-p)/p^2
                     # With our parameterization: var = mu + mu^2/r
                     # So: n = r, p = r/(r+mu)
-                    r = dispersion
+                    # Apply dispersion_scale: lower r = more variance = wider intervals
+                    r = max(0.5, dispersion * config.dispersion_scale)
                     p = r / (r + mean_pred)
                     sample_vals = np.random.negative_binomial(r, p, config.n_samples).tolist()
                     samples.append(sample_vals)
@@ -336,7 +338,7 @@ async def on_predict(
 # Service metadata
 info = MLServiceInfo(
     display_name="Darts Disease Model",
-    version="1.2.0",
+    version="1.3.0",
     summary="Spatio-temporal disease prediction using darts time series library",
     description="Uses LinearRegressionModel with climate covariates (rainfall, temperature) and Fourier seasonal features for disease case forecasting.",
     author="CHAP Team",
