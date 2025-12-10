@@ -54,11 +54,38 @@ def _parse_time_period(time_str: str) -> pd.Timestamp:
     return pd.to_datetime(time_str)
 
 
+def _add_seasonal_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add Fourier features for annual seasonality.
+
+    Uses sin/cos encoding of month-of-year to capture cyclical patterns.
+    """
+    df = df.copy()
+
+    # Get month from index (should be DatetimeIndex)
+    if isinstance(df.index, pd.DatetimeIndex):
+        month = df.index.month
+    else:
+        # Fallback: try to extract from index
+        month = pd.to_datetime(df.index).month
+
+    # Annual cycle: period = 12 months
+    # First harmonic captures main annual pattern
+    df["month_sin"] = np.sin(2 * np.pi * month / 12)
+    df["month_cos"] = np.cos(2 * np.pi * month / 12)
+
+    # Second harmonic for semi-annual patterns (e.g., bimodal disease peaks)
+    df["month_sin2"] = np.sin(4 * np.pi * month / 12)
+    df["month_cos2"] = np.cos(4 * np.pi * month / 12)
+
+    return df
+
+
 def _prepare_time_series(
     df: pd.DataFrame,
     location: str,
     target_col: str = "disease_cases",
     covariate_cols: list[str] | None = None,
+    add_seasonality: bool = True,
 ) -> tuple[TimeSeries | None, TimeSeries | None]:
     """Prepare darts TimeSeries for a single location."""
     loc_df = df[df["location"] == location].copy()
@@ -71,6 +98,10 @@ def _prepare_time_series(
     loc_df = loc_df.sort_values("time_period")
     loc_df["time_period"] = loc_df["time_period"].apply(_parse_time_period)
     loc_df = loc_df.set_index("time_period")
+
+    # Add seasonal features
+    if add_seasonality:
+        loc_df = _add_seasonal_features(loc_df)
 
     # Handle missing values in target
     if target_col in loc_df.columns:
@@ -85,10 +116,14 @@ def _prepare_time_series(
             freq=pd.infer_freq(loc_df.index) or "MS",
         )
 
-    # Create covariate series
+    # Create covariate series (include seasonal features)
     covariate_series = None
-    if covariate_cols:
-        available_covs = [c for c in covariate_cols if c in loc_df.columns]
+    all_cov_cols = list(covariate_cols or [])
+    if add_seasonality:
+        all_cov_cols.extend(["month_sin", "month_cos", "month_sin2", "month_cos2"])
+
+    if all_cov_cols:
+        available_covs = [c for c in all_cov_cols if c in loc_df.columns]
         if available_covs:
             cov_df = loc_df[available_covs].copy()
             for col in available_covs:
@@ -301,9 +336,9 @@ async def on_predict(
 # Service metadata
 info = MLServiceInfo(
     display_name="Darts Disease Model",
-    version="1.1.0",
+    version="1.2.0",
     summary="Spatio-temporal disease prediction using darts time series library",
-    description="Uses LinearRegressionModel with climate covariates (rainfall, temperature) for disease case forecasting.",
+    description="Uses LinearRegressionModel with climate covariates (rainfall, temperature) and Fourier seasonal features for disease case forecasting.",
     author="CHAP Team",
     author_assessed_status=AssessedStatus.yellow,
     contact_email="chap@example.com",

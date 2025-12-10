@@ -129,6 +129,47 @@ AssertionError: All fields in a npdataclass need to be of the same length: [3, 0
 
 ---
 
+## GAP-004: API mismatch between published chap-core and chapkit
+
+**Package:** chap-core (published version)
+**Severity:** High
+**Status:** Identified
+
+### Description
+The published version of chap-core (installed via `uvx --from chap-core`) expects a `model_artifact_id` field in the train response, but chapkit doesn't return this field. This causes evaluation to fail:
+
+```
+KeyError: 'model_artifact_id'
+```
+
+### Reproduction
+```bash
+uvx --from chap-core chap evaluate http://localhost:8080 \
+    --dataset-csv data.csv \
+    --is-chapkit-model
+```
+
+### Error Location
+`chap_core/models/chapkit_rest_api_wrapper.py:339`:
+```python
+return {"job_id": result["job_id"], "model_artifact_id": result["model_artifact_id"]}
+```
+
+### Workaround
+Use the local chap-core from source instead of the published version:
+```bash
+cd /Users/knutdr/Sources/chap-core
+uv run chap evaluate http://localhost:8080 --dataset-csv data.csv --is-chapkit-model
+```
+
+### Suggested Fix
+Either:
+1. Update chapkit to return `model_artifact_id` in train response
+2. Update chap-core to handle missing `model_artifact_id` gracefully
+3. Release a new version of chap-core that's compatible with current chapkit
+
+---
+
 ## TODOs for Helper Packages
 
 ### chapkit
