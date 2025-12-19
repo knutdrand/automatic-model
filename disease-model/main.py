@@ -16,7 +16,7 @@ from chapkit import BaseConfig
 from chapkit.api import AssessedStatus, MLServiceBuilder, MLServiceInfo
 from chapkit.artifact import ArtifactHierarchy
 from chapkit.data import DataFrame
-from chapkit.ml import FunctionalModelRunner
+from chapkit.ml import FunctionalModelRunner, RunInfo
 
 log = structlog.get_logger()
 
@@ -142,6 +142,7 @@ def _prepare_time_series(
 async def on_train(
     config: DiseaseModelConfig,
     data: DataFrame,
+    run_info: RunInfo,
     geo: FeatureCollection | None = None,
 ) -> Any:
     """Train darts model per location."""
@@ -232,6 +233,7 @@ async def on_predict(
     model: Any,
     historic: DataFrame,
     future: DataFrame,
+    run_info: RunInfo,
     geo: FeatureCollection | None = None,
 ) -> DataFrame:
     """Generate predictions using trained models."""

@@ -21,6 +21,7 @@ dev = [
 
 [tool.uv.sources]
 chap-python-sdk = { path = "/Users/knutdr/Sources/chap-python-sdk", editable = true }
+chapkit = { path = "/Users/knutdr/Sources/chapkit", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

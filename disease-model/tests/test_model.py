@@ -1,8 +1,9 @@
 """Tests for disease model using chap-python-sdk."""
 
 import pytest
+from chapkit.ml import RunInfo
 
-from main import DiseaseModelConfig, on_predict, on_train, runner
+from main import DiseaseModelConfig, on_predict, on_train
 
 
 class TestDiseaseModel:
@@ -16,7 +17,7 @@ class TestDiseaseModel:
         example_data = get_example_data(country="laos", frequency="monthly")
         config = DiseaseModelConfig(lags=6, lags_past_covariates=6, n_samples=10)
 
-        result = await validate_model_io(runner, example_data, config)
+        result = await validate_model_io(on_train, on_predict, example_data, config)
 
         assert result.success, f"Validation failed: {result.errors}"
         assert result.n_predictions > 0, "No predictions generated"
@@ -29,8 +30,9 @@ class TestDiseaseModel:
 
         example_data = get_example_data(country="laos", frequency="monthly")
         config = DiseaseModelConfig(lags=6, lags_past_covariates=6, n_samples=10)
+        run_info = RunInfo(prediction_length=3)
 
-        trained_model = await on_train(config, example_data.training_data, None)
+        trained_model = await on_train(config, example_data.training_data, run_info, None)
 
         assert "models" in trained_model, "No models in training output"
         assert "training_stats" in trained_model, "No training stats"
@@ -43,13 +45,15 @@ class TestDiseaseModel:
 
         example_data = get_example_data(country="laos", frequency="monthly")
         config = DiseaseModelConfig(lags=6, lags_past_covariates=6, n_samples=10)
+        run_info = RunInfo(prediction_length=3)
 
-        trained_model = await on_train(config, example_data.training_data, None)
+        trained_model = await on_train(config, example_data.training_data, run_info, None)
         predictions = await on_predict(
             config,
             trained_model,
             example_data.historic_data,
             example_data.future_data,
+            run_info,
             None,
         )
 
@@ -57,9 +61,8 @@ class TestDiseaseModel:
 
         assert "time_period" in pred_df.columns, "Missing time_period column"
         assert "location" in pred_df.columns, "Missing location column"
-        assert "samples" in pred_df.columns, "Missing samples column"
+        assert "sample_0" in pred_df.columns, "Missing sample_0 column"
 
-        # Check samples are lists with correct length
-        first_samples = pred_df["samples"].iloc[0]
-        assert isinstance(first_samples, list), "Samples should be a list"
-        assert len(first_samples) == config.n_samples, f"Expected {config.n_samples} samples"
+        # Check correct number of sample columns
+        sample_cols = [c for c in pred_df.columns if c.startswith("sample_")]
+        assert len(sample_cols) == config.n_samples, f"Expected {config.n_samples} sample columns"
