@@ -3,7 +3,7 @@
 import pytest
 from chapkit.ml import RunInfo
 
-from main import DiseaseModelConfig, on_predict, on_train
+from main import DiseaseModelConfig, info, on_predict, on_train
 
 
 class TestDiseaseModel:
@@ -66,3 +66,37 @@ class TestDiseaseModel:
         # Check correct number of sample columns
         sample_cols = [c for c in pred_df.columns if c.startswith("sample_")]
         assert len(sample_cols) == config.n_samples, f"Expected {config.n_samples} sample columns"
+
+    @pytest.mark.asyncio
+    async def test_model_with_generated_data(self) -> None:
+        """Test model using generated data based on MLServiceInfo."""
+        from chap_python_sdk.testing import (
+            MLServiceInfo,
+            PeriodType,
+            generate_test_data,
+            validate_model_io,
+        )
+
+        # Create MLServiceInfo matching the model's declared requirements
+        service_info = MLServiceInfo(
+            required_covariates=list(info.required_covariates),
+            allow_free_additional_continuous_covariates=info.allow_free_additional_continuous_covariates,
+            supported_period_type=PeriodType(info.supported_period_type.value),
+        )
+
+        # Generate test data based on model requirements
+        example_data = generate_test_data(
+            service_info,
+            prediction_length=3,
+            n_locations=3,
+            n_training_periods=24,
+            seed=42,
+        )
+
+        config = DiseaseModelConfig(lags=6, lags_past_covariates=6, n_samples=10)
+
+        result = await validate_model_io(on_train, on_predict, example_data, config)
+
+        assert result.success, f"Validation failed: {result.errors}"
+        assert result.n_predictions > 0, "No predictions generated"
+        assert result.n_samples == 10, f"Expected 10 samples, got {result.n_samples}"
