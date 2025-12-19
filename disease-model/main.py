@@ -13,7 +13,7 @@ from sklearn.ensemble import RandomForestRegressor
 from geojson_pydantic import FeatureCollection
 
 from chapkit import BaseConfig
-from chapkit.api import AssessedStatus, MLServiceBuilder, MLServiceInfo
+from chapkit.api import AssessedStatus, MLServiceBuilder, MLServiceInfo, PeriodType
 from chapkit.artifact import ArtifactHierarchy
 from chapkit.data import DataFrame
 from chapkit.ml import FunctionalModelRunner, RunInfo
@@ -348,6 +348,9 @@ info = MLServiceInfo(
     author="CHAP Team",
     author_assessed_status=AssessedStatus.yellow,
     contact_email="chap@example.com",
+    required_covariates=["rainfall", "mean_temperature"],
+    allow_free_additional_continuous_covariates=False,
+    supported_period_type=PeriodType.month,
 )
 
 HIERARCHY = ArtifactHierarchy(
