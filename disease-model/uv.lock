@@ -206,8 +206,8 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "chapkit"
-version = "0.10.3"
-source = { registry = "https://pypi.org/simple" }
+version = "0.10.4"
+source = { editable = "../../chapkit" }
 dependencies = [
     { name = "geojson-pydantic" },
     { name = "jinja2" },
@@ -218,9 +218,34 @@ dependencies = [
     { name = "typer" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/f7/dea236f5c910af54964c868055a27c022926d9df20101f9d986702e69347/chapkit-0.10.3.tar.gz", hash = "sha256:8ac1c890ae4eeba1af90c723128922c6ae4e49a0e36e2ceb0ba3b96a4c9a79ea", size = 61630, upload-time = "2025-12-09T09:42:06.864Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/28/aedd8223533a6459be9181e46ea885e875accf3587f74c4b952b10b85959/chapkit-0.10.3-py3-none-any.whl", hash = "sha256:afa0ea3b0e7b105e8d12c0bd4503ad09d3cf9a17f988e208232dbf808d408951", size = 86661, upload-time = "2025-12-09T09:42:08.114Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "geojson-pydantic", specifier = ">=2.1.0" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "numpy", specifier = ">=2" },
+    { name = "pandas", specifier = ">=2.3.3" },
+    { name = "polars", specifier = ">=1.34.0" },
+    { name = "servicekit", specifier = ">=0.5.3" },
+    { name = "typer", specifier = ">=0.20.0" },
+    { name = "xarray", specifier = ">=2025.10.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", extras = ["toml"], specifier = ">=7.6.0" },
+    { name = "mkdocs", specifier = ">=1.6.0" },
+    { name = "mkdocs-material", specifier = ">=9.5.0" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.26.0" },
+    { name = "mypy", specifier = ">=1.18.2" },
+    { name = "pandas-stubs", specifier = ">=2.2.3.250101" },
+    { name = "pyright", specifier = ">=1.1.407" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+    { name = "pytest-cov", specifier = ">=5.0.0" },
+    { name = "ruff", specifier = ">=0.14.0" },
+    { name = "scikit-learn", specifier = ">=1.7.2" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
 ]
 
 [[package]]
@@ -413,7 +438,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chapkit", specifier = ">=0.10.3" },
+    { name = "chapkit", editable = "../../chapkit" },
     { name = "darts", specifier = ">=0.31.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pandas", specifier = ">=2.3.3" },
